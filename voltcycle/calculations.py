@@ -3,6 +3,7 @@ to calculate the pertinent values. """
 import numpy as np
 from . import core
 
+
 def peak_values(dataframe_x, dataframe_y):
     """Outputs x (potentials) and y (currents) values from data indices
         given by peak_detection function.
@@ -101,8 +102,10 @@ def peak_heights(dataframe_x, dataframe_y):
     current_min = peak_values(dataframe_x, dataframe_y)[3]
     col_x1, col_x2 = core.split(dataframe_x)
     col_y1, col_y2 = core.split(dataframe_y)
-    line_at_min = core.linear_background(col_x1, col_y1)[core.peak_detection_fxn(dataframe_y)[1]]
-    line_at_max = core.linear_background(col_x2, col_y2)[core.peak_detection_fxn(dataframe_y)[0]]
+    line_at_min = core.linear_background(
+        col_x1, col_y1)[core.peak_detection_fxn(dataframe_y)[1]]
+    line_at_max = core.linear_background(
+        col_x2, col_y2)[core.peak_detection_fxn(dataframe_y)[0]]
     height_of_max = current_max - line_at_max
     height_of_min = abs(current_min - line_at_min)
     return [height_of_max, height_of_min]

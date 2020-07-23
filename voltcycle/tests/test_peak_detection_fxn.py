@@ -5,9 +5,11 @@ file which contains the function to be tested."""
 import numpy as np
 from voltcycle import core
 
+
 def test_peak_detection_fxn():
     """This function tests the peak_detection_fxn() function."""
-    read_file = core.read_file('../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
+    read_file = core.read_file(
+        '../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
     file_df = core.data_frame(read_file, 2)
     y_column = file_df['Current']
     df2 = core.peak_detection_fxn(y_column)

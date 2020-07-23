@@ -67,7 +67,7 @@ def read_file_dash(lines):
                 number = n_cycle - 1
                 data = read_cycle(a_val)
                 key_name = 'cycle_' + str(number)
-                #key_name = number
+                # key_name = number
                 dict_of_df[key_name] = copy.deepcopy(data)
             a_val = []
         if n_cycle:
@@ -97,7 +97,7 @@ def read_file(file):
     h_val = 0
     l_val = 0
     n_cycle = 0
-    #a = []
+    # a = []
     with open(file, 'rt') as f_val:
         print(file + ' Opened')
         for line in f_val:
@@ -115,7 +115,7 @@ def read_file(file):
                     number = n_cycle - 1
                     data = read_cycle(a_val)
                     key_name = 'cycle_' + str(number)
-                    #key_name = number
+                    # key_name = number
                     dict_of_df[key_name] = copy.deepcopy(data)
                 a_val = []
             if n_cycle:
@@ -182,9 +182,11 @@ def split(vector):
     Returns
     -------
     This function returns two equally splited vector.
-    The output then can be used to ease the implementation of peak detection and baseline finding.
+    The output then can be used to ease the implementation of
+    peak detection and baseline finding.
     """
-    assert isinstance(vector, pd.core.series.Series), "Input should be pandas series"
+    assert isinstance(vector, pd.core.series.Series),\
+        "Input should be pandas series"
     split_top = int(len(vector)/2)
     end = int(len(vector))
     vector1 = np.array(vector)[0:split]
@@ -215,7 +217,7 @@ def critical_idx(x, y):  # Finds index where data set is no longer linear
     User can change this function according to
     baseline branch method 2 to get various indexes.
     """
-    assert isinstance(x, np.ndarray), "Input should be numpy array"                                                                                                                               
+    assert isinstance(x, np.ndarray), "Input should be numpy array"
     assert isinstance(y == np.ndarray), "Input should be numpy array"
     if x.shape[0] != y.shape[0]:
         raise ValueError("x and y must have same first dimension, but "
@@ -280,10 +282,10 @@ def multiplica(vector_x, vector_y):
     This function returns a number that is the sum
     of multiplicity of given two vector.
     """
-    (assert type(vector_x) == np.ndarray,
-     "Input of the function should be numpy array")
-    (assert type(vector_y) == np.ndarray,
-     "Input of the function should be numpy array")
+    assert type(vector_x) == np.ndarray,\
+        "Input of the function should be numpy array"
+    assert type(vector_y) == np.ndarray,\
+        "Input of the function should be numpy array"
     a = 0
     for x, y in zip(vector_x, vector_y):
         a = a + (x * y)
@@ -348,12 +350,15 @@ def linear_background(x, y):
     -------
     List of constructed y_labels.
     """
-    assert isinstance(x, np.ndarray), "Input of the function should be numpy array"
-    assert isinstance(y, np.ndarray), "Input of the function should be numpy array"
+    assert isinstance(x, np.ndarray), \
+        "Input of the function should be numpy array"
+    assert isinstance(y, np.ndarray), \
+        "Input of the function should be numpy array"
     idx = critical_idx(x, y) + 5
     # this is also arbitrary number we can play with.
-    m_val, b_val = (linear_coeff(x[(idx - int(0.5 * idx)) : (idx + int(0.5 * idx))],
-                                 y[(idx - int(0.5 * idx)) : (idx + int(0.5 * idx))]))
+    m_val, b_val = (linear_coeff(
+        x[(idx - int(0.5 * idx)): (idx + int(0.5 * idx))],
+        y[(idx - int(0.5 * idx)): (idx + int(0.5 * idx))]))
     y_base = y_fitted_line(m_val, b_val, x)
     return y_base
 
@@ -415,6 +420,7 @@ def peak_detection_fxn(data_y):
     # return storage list
     # first value is the top, second value is the bottom
     return index_list
+
 
 def peak_values(dataframe_x, dataframe_y):
     """Outputs x (potentials) and y (currents) values from data indices
@@ -514,8 +520,10 @@ def peak_heights(dataframe_x, dataframe_y):
     current_min = peak_values(dataframe_x, dataframe_y)[3]
     col_x1, col_x2 = split(dataframe_x)
     col_y1, col_y2 = split(dataframe_y)
-    line_at_min = linear_background(col_x1, col_y1)[peak_detection_fxn(dataframe_y)[1]]
-    line_at_max = linear_background(col_x2, col_y2)[peak_detection_fxn(dataframe_y)[0]]
+    line_at_min = linear_background(
+        col_x1, col_y1)[peak_detection_fxn(dataframe_y)[1]]
+    line_at_max = linear_background(
+        col_x2, col_y2)[peak_detection_fxn(dataframe_y)[0]]
     height_of_max = current_max - line_at_max
     height_of_min = abs(current_min - line_at_min)
     return [height_of_max, height_of_min]
@@ -578,9 +586,10 @@ def data_analysis(data):
         results_dict['Reversible'] = 'No'
     else:
         results_dict['Reversible'] = 'Yes'
-    if half_e > 0 and  'Yes' in results_dict.values():
+    if half_e > 0 and 'Yes' in results_dict.values():
         results_dict['Type'] = 'Catholyte'
     elif 'Yes' in results_dict.values():
         results_dict['Type'] = 'Anolyte'
-    return results_dict, col_x1, col_x2, col_y1, col_y2, y_base1, y_base2, peak_index
-    #return results_dict
+    return results_dict, col_x1, col_x2,\
+        col_y1, col_y2, y_base1, y_base2, peak_index
+    # return results_dict

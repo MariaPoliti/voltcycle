@@ -61,10 +61,10 @@ def critical_idx(x, y):  # Finds index where data set is no longer linear
     User can change this function according to
     baseline branch method 2 to get various indexes..
     """
-    (assert type(x) == np.ndarray,
-     "Input of the function should be numpy array")
-    (assert type(y) == np.ndarray,
-     "Input of the function should be numpy array")
+    assert type(x) == np.ndarray,\
+        "Input of the function should be numpy array"
+    assert type(y) == np.ndarray,\
+        "Input of the function should be numpy array"
     if x.shape[0] != y.shape[0]:
         raise ValueError("x and y must have same first dimension, but "
                          "have shapes {} and {}".format(x.shape, y.shape))
@@ -129,10 +129,10 @@ def multiplica(vector_x, vector_y):
     This function returns a number that is the sum
     of multiplicity of given two vector.
     """
-    (assert type(vector_x) == np.ndarray,
-     "Input of the function should be numpy array")
-    (assert type(vector_y) == np.ndarray,
-     "Input of the function should be numpy array")
+    assert type(vector_x) == np.ndarray,\
+        "Input of the function should be numpy array"
+    assert type(vector_y) == np.ndarray,\
+        "Input of the function should be numpy array"
     a = 0
     for x, y in zip(vector_x, vector_y):
         a = a + (x * y)

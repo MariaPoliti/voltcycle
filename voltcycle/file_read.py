@@ -48,8 +48,8 @@ def read_file(file):
     dict_of_df = {}
     h_val = 0
     l_val = 0
-    n_cycle = 0
-    #a = []
+    n_ccle = 0
+    # a = []
     with open(file, 'rt') as f_val:
         print(file + ' Opened')
         for line in f_val:
@@ -67,7 +67,7 @@ def read_file(file):
                     number = n_cycle - 1
                     data = read_cycle(a_val)
                     key_name = 'cycle_' + str(number)
-                    #key_name = number
+                    # key_name = number
                     dict_of_df[key_name] = copy.deepcopy(data)
                 a_val = []
             if n_cycle:
@@ -75,9 +75,9 @@ def read_file(file):
     return dict_of_df, number
 
 
-#df = pd.DataFrame(list(dict1['df_1'].items()))
-#list1, list2 = list(dict1['df_1'].items())
-#list1, list2 = list(dict1.get('df_'+str(1)))
+# df = pd.DataFrame(list(dict1['df_1'].items()))
+# list1, list2 = list(dict1['df_1'].items())
+# list1, list2 = list(dict1.get('df_'+str(1)))
 
 def data_frame(dict_cycle, number):
     """Reads the dictionary of dataframes and returns dataframes for each cycle
@@ -95,6 +95,7 @@ def data_frame(dict_cycle, number):
     zipped_list = list(zip(list1[1], list2[1]))
     data = pd.DataFrame(zipped_list, columns=['Potential', 'Current'])
     return data
+
 
 def plot_fig(dict_cycle, number):
     """For basic plotting of the cycle data

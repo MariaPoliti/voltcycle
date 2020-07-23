@@ -1,8 +1,8 @@
-"""This module contains a function to determine the peaks in the specified dataset,
-based on the y values (or current values). The function takes in the specified
-y column of the dataframe and outputs a list consisting of the index values of
-the peaks. This module calls the peakutils and numpy packages along with the
-'main.py' file in the master branch."""
+"""This module contains a function to determine the peaks in the specified
+ dataset, based on the y values (or current values). The function takes in the
+ specified y column of the dataframe and outputs a list consisting of the index
+ values of the peaks. This module calls the peakutils and numpy packages along
+ with the'main.py' file in the master branch."""
 
 import peakutils
 import numpy as np
@@ -10,15 +10,19 @@ import core
 
 
 def peak_detection_fxn(data_y):
-    """The function takes an input of the column containing the y variables in the dataframe,
-    associated with the current. The function calls the split function, which splits the
-    column into two arrays, one of the positive and one of the negative values.
-    This is because cyclic voltammetry delivers negative peaks, but the peakutils function works
-    better with positive peaks. The function also runs on the middle 80% of data to eliminate
-    unnecessary noise and messy values associated with pseudo-peaks.The vectors are then imported
-    into the peakutils.indexes function to determine the significant peak for each array.
-    The values are stored in a list, with the first index corresponding to the top peak and the
-    second corresponding to the bottom peak.
+    """The function takes an input of the column containing the y variables
+    in the dataframe, associated with the current. The function calls the split
+    function, which splits the column into two arrays, one of the positive and
+    one of the negative values.
+    This is because cyclic voltammetry delivers negative peaks, but the
+    peakutils function works better with positive peaks. The function also
+    runs on the middle 80% of data to eliminate unnecessary noise and messy
+    values associated with pseudo-peaks.The vectors are then imported
+    into the peakutils.indexes function to determine the significant peak for
+    each array. The values are stored in a list, with the first index
+    corresponding to the top peak and the second corresponding to
+    the bottom peak.
+
     Parameters
     ______________
     y column: must be a column from a pandas dataframe

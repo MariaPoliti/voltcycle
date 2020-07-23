@@ -4,7 +4,7 @@ import numpy as np
 from voltcycle import file_read
 from voltcycle import baseline
 
-#Test functions:
+
 def test_split():
     """
     This function tests the split function.
@@ -13,34 +13,38 @@ def test_split():
     in two. So, len of output should equal to half len
     of input.
     """
-    dict_1 = file_read.read_file('../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
+    dict_1 = file_read.read_file(
+        '../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
     data = file_read.data_frame(dict_1, 1)
     vec_x = data.Potential
     a_val, b_val = baseline.split(vec_x)
     assert isinstance(a_val == np.ndarray), "The output type is incorrect."
     assert isinstance(b_val == np.ndarray), "The output type is incorrect."
-    #assert len(a)  int(len(x)/2), "The output should be "
-    (np.testing.assert_almost_equal(len(a_val), (len(vec_x)/2), decimal=0),
-     "Output length is incorrect")
-    (np.testing.assert_almost_equal(len(b_val), (len(vec_x)/2), decimal=0),
-     "Output length is incorrect")
+    # assert len(a)  int(len(x)/2), "The output should be "
+    np.testing.assert_almost_equal(len(a_val), (len(vec_x)/2), decimal=0), \
+        "Output length is incorrect"
+    np.testing.assert_almost_equal(len(b_val), (len(vec_x)/2), decimal=0), \
+        "Output length is incorrect"
     return "Test of split function passed!"
 
 
 def test_critical_idx():
     """
-    Critical_idx returns idx of the index of the intercepts of different moving average curves.
+    Critical_idx returns idx of the index of the intercepts of different
+    moving average curves.
     Test the output if it is a single index.
     Test if the output is integer.
     Test if the index exist in original input.
     """
-    dict_1 = file_read.read_file('../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
+    dict_1 = file_read.read_file(
+        '../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
     data = file_read.data_frame(dict_1, 1)
     col_x1, col_x2 = baseline.split(data.Potential)
     col_y1, col_y2 = baseline.split(data.Current)
     idx = baseline.critical_idx(col_x1, col_y1)
-    assert isinstance(idx == np.int64), ("Output should be integer, but"
-                                         "Function is returning {}".format(type(idx)))
+    assert isinstance(idx == np.int64), \
+        "Output should be integer, but function is returning {}".format(
+        type(idx))
     assert idx.shape == (), "This function should return single idx"
     assert 0 < idx < len(col_x1), "Output index is out of order"
     return "Test of critical_idx function passed!"
@@ -52,33 +56,39 @@ def test_sum_mean():
     Expect output to be a list, with length 2.
     Can also test if the mean is correctly calculated.
     """
-    dict_1 = file_read.read_file('../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
+    dict_1 = file_read.read_file(
+        '../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
     data = file_read.data_frame(dict_1, 1)
     col_x1, col_x2 = baseline.split(data.Potential)
     a_val = baseline.sum_mean(col_x1)
-    assert isinstance(a_val == list), ("Output should be list object,"
-                                       " but fuction is returning{}".format(type(a_val)))
-    assert len(a_val) == 2, ("length of output should be 2,"
-                             "but, function is returning a list with length{}".format(len(a_val)))
-    (np.testing.assert_almost_equal(a_val[1], np.mean(col_x1), decimal=3),
-     "Mean is calculated incorrectly")
+    assert isinstance(a_val == list), \
+        "Output should be list object, but fuction is returning{}".format(
+        type(a_val))
+    assert len(a_val) == 2, \
+        "length of output should be 2, but function is returning a" +\
+        "list with length{}".format(len(a_val))
+    np.testing.assert_almost_equal(a_val[1], np.mean(col_x1), decimal=3), \
+        "Mean is calculated incorrectly"
     return "Test of sum_mean function passed!"
+
 
 def test_multiplica():
     """
     Target function returns the sum of the multilica of two given vector.
     Expect output as np.float object.
     """
-    dict_1 = file_read.read_file('../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
+    dict_1 = file_read.read_file(
+        '../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
     data = file_read.data_frame(dict_1, 1)
     col_x1, col_x2 = baseline.split(data.Potential)
     col_y1, col_y2 = baseline.split(data.Current)
     a_val = baseline.multiplica(col_x1, col_y1)
-    assert isinstance(a_val == np.float64), ("Output should be float object,"
-                                             " but fuction is returning{}".format(type(a_val)))
+    assert isinstance(a_val == np.float64), \
+        "Output should be float object, but fuction is returning{}".format(
+        type(a_val))
     b_val = np.multiply(col_x1, col_y1).sum()
-    (np.testing.assert_almost_equal(a_val, b_val, decimal=3),
-     "Calculation is incorrect")
+    np.testing.assert_almost_equal(a_val, b_val, decimal=3), \
+        "Calculation is incorrect"
     return "Test Passed for multiplica function!"
 
 
@@ -94,6 +104,7 @@ def test_linear_coeff():
     assert m_val == 1, "Inclination coeffecient is incorrect"
     assert b_val == 0, "Interception is incorrect"
     return "Test passed for linear_coeff function!"
+
 
 def test_y_fitted_line():
     """
@@ -113,13 +124,15 @@ def test_y_fitted_line():
         raise ValueError("Fitted line y values are calculated incorrectly")
     return "Test passed for y_fitted_line function!"
 
+
 def test_linear_background():
     """
     Target function is wrapping function which returns
     linear fitted line.Should exam if the output is
     correct shape, correct type, and correct value.
     """
-    dict_1 = file_read.read_file('../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
+    dict_1 = file_read.read_file(
+        '../../data/10mM_2,7-AQDS_1M_KOH_25mVs_0.5step_2.txt')
     data = file_read.data_frame(dict_1, 1)
     col_x1, col_x2 = baseline.split(data.Potential)
     col_y1, col_y2 = baseline.split(data.Current)
