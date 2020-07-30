@@ -16,6 +16,7 @@ def read_cycle(data):
     Parameters
     __________
     data: segment of data file
+
     Returns
     _______
     A dataframe with potential and current columns
@@ -53,19 +54,19 @@ def read_file_dash(lines):
     # with open(file, 'rt') as f:
     #    print(file + ' Opened')
     for line in lines:
-        record = 0
+        # record = 0
         if not (h_val and l_val):
             if line.startswith('SCANRATE'):
-                scan_rate = float(line.split()[2])
+                # scan_rate = float(line.split()[2])
                 h_val = 1
             if line.startswith('STEPSIZE'):
-                step_size = float(line.split()[2])
+                # step_size = float(line.split()[2])
                 l_val = 1
         if line.startswith('CURVE'):
             n_cycle += 1
             if n_cycle > 1:
                 number = n_cycle - 1
-                data = read_cycle(a_val)
+                data = read_cycle(number)
                 key_name = 'cycle_' + str(number)
                 # key_name = number
                 dict_of_df[key_name] = copy.deepcopy(data)
@@ -89,41 +90,57 @@ def read_file(file):
 
     Returns:
     ________
+    df_dict : dict
+              dictionary of dataframes with keys as cycle numbers and
+              values as dataframes for each cycle
+    n_cycle: int
+             number of cycles in the raw file
+    voltam_parameters: dict
+                       dictionary containing the parameters of the experimental
+                       parametrs used for the cyclic voltammetry scan
+
     dict_of_df: dictionary of dataframes with keys = cycle numbers and
     values = dataframes for each cycle
     n_cycle: number of cycles in the raw file
     """
-    dict_of_df = {}
-    h_val = 0
-    l_val = 0
+    voltam_parameters = {}
+    df_dict = {}
+    data = {}
+    param = 0
     n_cycle = 0
-    # a = []
-    with open(file, 'rt') as f_val:
-        print(file + ' Opened')
-        for line in f_val:
-            record = 0
-            if not (h_val and l_val):
+
+    with open(file, 'r') as f:
+        # print(file + ' Opened')
+        for line in f:
+            if param != 6:
                 if line.startswith('SCANRATE'):
-                    scan_rate = float(line.split()[2])
-                    h_val = 1
+                    voltam_parameters['scan_rate(mV/s)'] = \
+                        float(line.split()[2])
+                    param = param+1
                 if line.startswith('STEPSIZE'):
-                    step_size = float(line.split()[2])
-                    l_val = 1
+                    voltam_parameters['step_size(V)'] = \
+                        float(line.split()[2]) * 0.001
+                    param = param+1
+                if line.startswith('VINIT'):
+                    voltam_parameters['vinit(V)'] = float(line.split()[2])
+                    param = param+1
+                if line.startswith('VLIMIT1'):
+                    voltam_parameters['vlimit_1(V)'] = float(line.split()[2])
+                    param = param+1
+                if line.startswith('VLIMIT2'):
+                    voltam_parameters['vlimit_2(V)'] = float(line.split()[2])
+                    param = param+1
+                if line.startswith('VFINAL'):
+                    voltam_parameters['vfinal(V)'] = float(line.split()[2])
+                    param = param+1
             if line.startswith('CURVE'):
                 n_cycle += 1
-                if n_cycle > 1:
-                    number = n_cycle - 1
-                    data = read_cycle(a_val)
-                    key_name = 'cycle_' + str(number)
-                    # key_name = number
-                    dict_of_df[key_name] = copy.deepcopy(data)
-                a_val = []
+                data['cycle_'+str(n_cycle)] = []
             if n_cycle:
-                a_val.append(line)
-    return dict_of_df, number
-# df = pd.DataFrame(list(dict1['df_1'].items()))
-# list1, list2 = list(dict1['df_1'].items())
-# list1, list2 = list(dict1.get('df_'+str(1)))
+                data['cycle_'+str(n_cycle)].append(line)
+    for i in range(len(data)):
+        df_dict['cycle_'+str(i+1)] = read_cycle(data['cycle_'+str(i+1)])
+    return df_dict, n_cycle, voltam_parameters
 
 
 def data_frame(dict_cycle, number):
@@ -144,72 +161,102 @@ def data_frame(dict_cycle, number):
     return data
 
 
-def plot_fig(dict_cycle, number):
+def plot_fig(dict_cycle, number, save=True, filename='cycle'):
     """For basic plotting of the cycle data
 
     Parameters
-    __________
-    dict: dictionary of dataframes for all the cycles
-    n: number of cycles
+    ----------
+    dict_cycle: dict
+                dictionary of dataframes for all the cycles
+    number: into
+            number of cycles
+    save: bool
+          if True saves the plots into a .png file
+    filename:  str
+               string to use as the filename containing the I vs. V plot
 
-    Saves the plot in a file called cycle.png
+    Return
+    ------
+    ax: matplotlib plot
+        plot containing the cyclic voltammogram
     """
 
+    fig, ax = plt.subplots()
     for i in range(number):
         print(i+1)
         data = data_frame(dict_cycle, i+1)
-        plt.plot(data.Potential, data.Current, label="Cycle{}".format(i+1))
+        ax.plot(data.Potential, data.Current, label="Cycle{}".format(i+1))
 
-    print(data.head())
-    plt.xlabel('Voltage')
-    plt.ylabel('Current')
-    plt.legend()
-    plt.savefig('cycle.png')
-    print('executed')
+    # print(data.head())
+    ax.set_xlabel('Voltage')
+    ax.set_ylabel('Current')
+    ax.legend()
+    plt.show()
+    if save:
+        plt.savefig(filename + '.png', bbox_inches='tight')
+    # print('executed')
+    return ax
 
 
 # split forward and backward sweping data, to make it easier for processing.
-def split(vector):
+def split(vector, param):
     """
     This function takes an array and splits it into equal two half.
-    ----------
+    This function returns two split vectors (positive and negative scan)
+    based on step size and potential limits. The output then can be used
+    to ease the implementation of peak detection and baseline finding.
+
     Parameters
     ----------
-    vector : Can be in any form of that can be turned into numpy array.
-    Normally, for the use of this function, it expects pandas DataFrame column.
-    For example, df['potentials'] could be input as the column of x data.
-    -------
+    vector : list
+             Can be in any form of that can be turned into numpy array.
+             Normally it expects pandas DataFrame column.
+    param: dict
+           Dictionary of parameters governing the CV run.
+
     Returns
     -------
-    This function returns two equally splited vector.
-    The output then can be used to ease the implementation of
-    peak detection and baseline finding.
+    forward: array
+             array containing the values of the forward scan
+    backward: array
+              array containing the potential values of the backward scan
     """
-    assert isinstance(vector, pd.core.series.Series),\
-        "Input should be pandas series"
-    split_top = int(len(vector)/2)
-    end = int(len(vector))
-    vector1 = np.array(vector)[0:split]
-    vector2 = np.array(vector)[split_top:end]
-    return vector1, vector2
+    # assert isinstance(vector, pd.core.series.Series),\
+    #     "Input should be pandas series"
+    scan = int(abs(
+        param['vlimit_1(V)']-param['vinit(V)'])/param['step_size(V)'])
+    if param['vinit(V)'] > param['vlimit_1(V)']:
+        backward = np.array(vector[:scan])
+        forward = np.array(vector[scan:])
+        # vector_p = vector_p.reset_index(drop=True)
+    else:
+        forward = np.array(vector[:scan])
+        backward = np.arrya(vector[scan:])
+        # vector_n = vector_n.reset_index(drop=True)
+    return forward, backward
 
 
 def critical_idx(x, y):  # Finds index where data set is no longer linear
     """
-    This function takes x and y values callculate the derrivative
+    This function takes x and y values calculate the derivative
     of x and y, and calculate moving average of 5 and 15 points.
     Finds intercepts of different moving average curves and
     return the indexs of the first intercepts.
-    ----------
+
     Parameters
     ----------
-    x : Numpy array.
-    y : Numpy array.
-    Normally, for the use of this function, it expects
-    numpy array that came out from split function.
-    For example, output of split.df['potentials']
-    could be input for this function as x.
-    -------
+    x : Numpy array
+        Normally, for the use of this function, it expects
+        numpy array that came out from split function.
+        For example, output of split.df['potentials']
+        could be input for this function as x.
+    y : Numpy array
+        Normally, for the use of this function, it expects
+        numpy array that came out from split function.
+        For example, output of split.df['current']
+        could be input for this function as y.
+
+
     Returns
     -------
     This function returns 5th index of the intercepts
@@ -218,7 +265,7 @@ def critical_idx(x, y):  # Finds index where data set is no longer linear
     baseline branch method 2 to get various indexes.
     """
     assert isinstance(x, np.ndarray), "Input should be numpy array"
-    assert isinstance(y == np.ndarray), "Input should be numpy array"
+    assert isinstance(y, np.ndarray), "Input should be numpy array"
     if x.shape[0] != y.shape[0]:
         raise ValueError("x and y must have same first dimension, but "
                          "have shapes {} and {}".format(x.shape, y.shape))
@@ -232,7 +279,7 @@ def critical_idx(x, y):  # Finds index where data set is no longer linear
         a_val = 0
         for j in range(0, 5):
             a_val = a_val + k_val[i+j]
-        ave10.append(round(a/10, 5))
+        ave10.append(round(a_val/10, 5))
     # keeping 5 desimal points for more accuracy
     # This numbers affect how sensitive to noise.
     for i in range(len(k_val)-15):
@@ -244,8 +291,8 @@ def critical_idx(x, y):  # Finds index where data set is no longer linear
     ave15i = np.asarray(ave15)
     # Find intercepts of different moving average curves
     # reshape into one row.
-    idx = {np.argwhere(np.diff(np.sign(ave15i -
-                               ave10i[:len(ave15i)]) != 0)).reshape(-1) + 0}
+    idx = np.argwhere(np.diff(np.sign(ave15i -
+                      ave10i[:len(ave15i)]) != 0)).reshape(-1) + 0
     return idx[5]
 # This is based on the method 1 where user can't choose the baseline.
 # If wanted to add that, choose method2.
@@ -254,33 +301,43 @@ def critical_idx(x, y):  # Finds index where data set is no longer linear
 def sum_mean(vector):
     """
     This function returns the mean and sum of the given vector.
-    ----------
+
     Parameters
     ----------
-    vector : Can be in any form of that can be turned into numpy array.
-    Normally, for the use of this function, it expects pandas DataFrame column.
-    For example, df['potentials'] could be input as the column of x data.
+    vector : list
+             Can be in any form of that can be turned into numpy array.
+             Normally,it expects pd.DataFrame column.
+             For example, df['potentials'] could be input as x data.
+
+    Return
+    ------
+    sum_vector: list
+                a list containing the meand and the cumulative sum
+                of the vector
     """
-    assert isinstance(vector == np.ndarray), "Input should be numpy array"
+    assert isinstance(vector, np.ndarray), "Input should be numpy array"
     a = 0
     for i in vector:
         a = a + i
-    return [a, a/len(vector)]
+    sum_vector = [a, a/len(vector)]
+    return sum_vector
 
 
 def multiplica(vector_x, vector_y):
     """
     This function returns the sum of the multilica of two given vector.
-    ----------
+
     Parameters
     ----------
-    vector_x, vector_y : Output of the split vector function.
-    Two inputs can be the same vector or different vector with same length.
-    -------
+    vector_x, vector_y : list
+                         Output of the split vector function.
+                         Two inputs can be the same vector or different
+                         vector with same length.
+
     Returns
     -------
-    This function returns a number that is the sum
-    of multiplicity of given two vector.
+    a: float
+       the sum  of multiplicity of given two vector.
     """
     assert type(vector_x) == np.ndarray,\
         "Input of the function should be numpy array"
@@ -296,18 +353,23 @@ def linear_coeff(x, y):
     """
     This function returns the inclination coeffecient and
     y axis interception coeffecient m and b.
-    ----------
+
     Parameters
     ----------
-    x : Output of the split vector function.
-    y : Output of the split vector function.
-    -------
+    x : list
+        Output of the split vector function.
+    y : list
+        Output of the split vector function.
+
     Returns
     -------
-    float number of m and b.
+    m: float
+        slope value obtained from lienear fitting
+    b: float
+        intercept value obtained from linear fitting
     """
-    m = {(multiplica(x, y) - sum_mean(x)[0] * sum_mean(y)[1]) /
-         (multiplica(x, x) - sum_mean(x)[0] * sum_mean(x)[1])}
+    m = (multiplica(x, y) - sum_mean(x)[0] * sum_mean(y)[1]) / \
+        (multiplica(x, x) - sum_mean(x)[0] * sum_mean(x)[1])
     b = sum_mean(y)[1] - m * sum_mean(x)[1]
     return m, b
 
@@ -319,13 +381,17 @@ def y_fitted_line(m_val, b_val, vec_x):
     ----------
     Parameters
     ----------
-    x : Output of the split vector function. x value of the input.
-    m : inclination of the baseline.
-    b : y intercept of the baseline.
+    x : list
+        Output of the split vector function. x value of the input.
+    m : int/float
+        inclination of the baseline.
+    b : int/float
+        y intercept of the baseline.
     -------
     Returns
     -------
-    List of constructed y_labels.
+    y_base: list
+            List of constructed y_labels.
     """
     y_base = []
     for i in vec_x:
@@ -338,21 +404,24 @@ def linear_background(x, y):
     """
     This function is wrapping function for calculating linear fitted line.
     It takes x and y values of the cv data, returns the fitted baseline.
-    ----------
+
     Parameters
     ----------
-    x : Output of the split vector function. x value
-    of the cyclic voltammetry data.
-    y : Output of the split vector function. y value
-    of the cyclic voltammetry data.
-    -------
+    x : list
+        Output of the split vector function. x value
+        of the cyclic voltammetry data.
+    y : list
+        Output of the split vector function. y value
+        of the cyclic voltammetry data.
+
     Returns
     -------
-    List of constructed y_labels.
+    y_base: list
+            List of constructed y_labels.
     """
-    assert isinstance(x, np.ndarray), \
+    assert isinstance(x, (np.ndarray, list)), \
         "Input of the function should be numpy array"
-    assert isinstance(y, np.ndarray), \
+    assert isinstance(y, (np.ndarray, list)), \
         "Input of the function should be numpy array"
     idx = critical_idx(x, y) + 5
     # this is also arbitrary number we can play with.
@@ -363,7 +432,7 @@ def linear_background(x, y):
     return y_base
 
 
-def peak_detection_fxn(data_y):
+def peak_detection(data_y, scan_sign):
     """The function takes an input of the column containing the y variables in
     the dataframe, associated with the current. The function calls the split
     function, which splits the column into two arrays, one of the positive and
@@ -375,206 +444,241 @@ def peak_detection_fxn(data_y):
     peak for each array. The values are stored in a list, with the first index
     corresponding to the top peak and the second corresponding to the bottom
     peak.
+
     Parameters
-    ______________
-    y column: must be a column from a pandas dataframe
+    ----------
+    y column: pd.DataFrame/Series
+              must be a column from a pandas dataframe
+    scan_sign: str
+               Can be 'positive' or 'negative'
 
-    Returns
-    _____________
-    A list with the index of the peaks from the top curve and bottom curve.
+    Return
+    -------
+    peak_index: list
+                A list with the index of the peaks from the top
+                curve and bottom curve.
     """
-
-    # initialize storage list
-    index_list = []
-
-    # split data into above and below the baseline
-    col_y1, col_y2 = split(data_y)  # removed main. head.
-
-    # detemine length of data and what 10% of the data is
-    len_y = len(col_y1)
-    ten_percent = int(np.around(0.1*len_y))
-
-    # adjust both input columns to be the middle 80% of data
-    # (take of the first and last 10% of data)
-    # this avoid detecting peaks from electrolysis
-    # (from water splitting and not the molecule itself,
-    # which can form random "peaks")
-    mod_col_y2 = col_y2[ten_percent:len_y-ten_percent]
-    mod_col_y1 = col_y1[ten_percent:len_y-ten_percent]
-
-    # run peakutils package to detect the peaks for both top and bottom
-    peak_top = peakutils.indexes(mod_col_y2, thres=0.99, min_dist=20)
-    peak_bottom = peakutils.indexes(abs(mod_col_y1), thres=0.99, min_dist=20)
-
-    # detemine length of both halves of data
-    len_top = len(peak_top)
-    len_bot = len(peak_bottom)
-
-    # append the values to the storage list
-    # manipulate values by adding the ten_percent value back
-    # (as the indecies have moved)
-    # to detect the actual peaks and not the modified values
-    index_list.append(peak_top[int(len_top/2)]+ten_percent)
-    index_list.append(peak_bottom[int(len_bot/2)]+ten_percent)
-
-    # return storage list
-    # first value is the top, second value is the bottom
-    return index_list
+    peak_index = {}
+    if scan_sign == 'positive':
+        try:
+            peak_index['peak_top'] = peakutils.indexes(
+                data_y, thres=0.99, min_dist=50)[0]
+        except IndexError:
+            peak_index['peak_top'] = 0
+        # print(peak_index)
+    else:
+        try:
+            peak_index['peak_bottom'] = peakutils.indexes(
+                -data_y, thres=0.99, min_dist=50)[0]
+        except IndexError:
+            peak_index['peak_bottom'] = 0
+    return peak_index
 
 
-def peak_values(dataframe_x, dataframe_y):
+def peak_values(dataframe_x, dataframe_y, param):
     """Outputs x (potentials) and y (currents) values from data indices
         given by peak_detection function.
 
-       ----------
-       Parameters
-       ----------
-       DataFrame_x : should be in the form of a pandas DataFrame column.
-         For example, df['potentials'] could be input as the column of x
-         data.
+    Parameters
+    ----------
+    DataFrame_x : pd.DataFrame
+                  should be in the form of a pandas DataFrame column.
+                  For example, df['potentials'] could be input as the
+                  column of x data.
 
-        DataFrame_y : should be in the form of a pandas DataFrame column.
-          For example, df['currents'] could be input as the column of y
-          data.
+    DataFrame_y :  pd.DataFrame
+                  should be in the form of a pandas DataFrame column.
+                  For example, df['currents'] could be input as the
+                  column of y data.
+    param: dict
+           Dictionary of parameters governing the CV run.
 
-       Returns
-       -------
-       Result : numpy array of coordinates at peaks in the following order:
-         potential of peak on top curve, current of peak on top curve,
-         potential of peak on bottom curve, current of peak on bottom curve"""
-    index = peak_detection_fxn(dataframe_y)
-    potential1, potential2 = split(dataframe_x)
-    current1, current2 = split(dataframe_y)
+    Returns
+    -------
+    peak_array : np.array
+                 Array of coordinates at peaks in the following order:
+                 potential of peak on top curve, current of peak on top curve,
+                 potential of peak on bottom curve, current of peak on bottom
+                 curve
+    """
     peak_values = []
-    peak_values.append(potential2[(index[0])])  # TOPX (bottom part of curve is
+    potential_p, potential_n = split(dataframe_x, param)
+    current_p, current_n = split(dataframe_y, param)
+    peak_top_index = peak_detection(current_p, 'positive')
+    peak_bottom_index = peak_detection(current_n, 'negative')
+    # TOPX (bottom part of curve is
+    peak_values.append(potential_p[(peak_top_index['peak_top'])])
+
     # the first part of DataFrame)
-    peak_values.append(current2[(index[0])])  # TOPY
-    peak_values.append(potential1[(index[1])])  # BOTTOMX
-    peak_values.append(current1[(index[1])])  # BOTTOMY
+    # TOPY
+    peak_values.append(current_p[(peak_top_index['peak_top'])])
+    # BOTTOMX
+    peak_values.append(potential_n[(peak_bottom_index['peak_bottom'])])
+    # BOTTOMY
+    peak_values.append(current_n[(peak_bottom_index['peak_bottom'])])
     peak_array = np.array(peak_values)
     return peak_array
 
 
-def del_potential(dataframe_x, dataframe_y):
-    """Outputs the difference in potentials between anoidc and
-       cathodic peaks in cyclic voltammetry data.
+def del_potential(dataframe_x, dataframe_y, param):
+    """
+    Outputs the difference in potentials between anoidc and
+    cathodic peaks in cyclic voltammetry data.
 
-       Parameters
-       ----------
-       DataFrame_x : should be in the form of a pandas DataFrame column.
-         For example, df['potentials'] could be input as the column of x
-         data.
+    Parameters
+    ----------
+    DataFrame_x : pd.DataFrame
+                 should be in the form of a pandas DataFrame column.
+                 For example, df['potentials'] could be input as the
+                 column of x data.
 
-        DataFrame_y : should be in the form of a pandas DataFrame column.
-          For example, df['currents'] could be input as the column of y
-          data.
+    DataFrame_y :  pd.DataFrame
+                 should be in the form of a pandas DataFrame column.
+                 For example, df['currents'] could be input as the
+                 column of y data.
+    param: dict
+           Dictionary of parameters governing the CV run.
 
-        Returns
-        -------
-        Results: difference in peak potentials."""
-    del_potentials = (peak_values(dataframe_x, dataframe_y)[0] -
-                      peak_values(dataframe_x, dataframe_y)[2])
+    Returns
+    -------
+    Results: difference in peak potentials.
+    """
+    del_potentials = (peak_values(dataframe_x, dataframe_y, param)[0] -
+                      peak_values(dataframe_x, dataframe_y, param)[2])
     return del_potentials
 
 
-def half_wave_potential(dataframe_x, dataframe_y):
-    """Outputs the half wave potential(redox potential) from cyclic
-       voltammetry data.
+def half_wave_potential(dataframe_x, dataframe_y, param):
+    """
+    Outputs the half wave potential(redox potential) from cyclic
+    voltammetry data.
 
-       Parameters
-       ----------
-       DataFrame_x : should be in the form of a pandas DataFrame column.
-         For example, df['potentials'] could be input as the column of x
-         data.
+    Parameters
+    ----------
+    DataFrame_x : pd.DataFrame
+                  should be in the form of a pandas DataFrame column.
+                  For example, df['potentials'] could be input as the
+                  column of x data.
 
-        DataFrame_y : should be in the form of a pandas DataFrame column.
-          For example, df['currents'] could be input as the column of y
-          data.
+    DataFrame_y :  pd.DataFrame
+                  should be in the form of a pandas DataFrame column.
+                  For example, df['currents'] could be input as the
+                  column of y data.
 
-       Returns
-       -------
-       Results : the half wave potential."""
-    half_wave_pot = (del_potential(dataframe_x, dataframe_y))/2
+    Returns
+    -------
+    Results : float64
+              the half wave potential.
+    """
+    half_wave_pot = (del_potential(dataframe_x, dataframe_y, param))/2
     return half_wave_pot
 
 
-def peak_heights(dataframe_x, dataframe_y):
-    """Outputs heights of minimum peak and maximum
-         peak from cyclic voltammetry data.
+def peak_heights(dataframe_x, dataframe_y, param):
+    """
+    Outputs heights of minimum peak and maximum peak from cyclic
+     voltammetry data.
 
-       Parameters
-       ----------
-       DataFrame_x : should be in the form of a pandas DataFrame column.
-         For example, df['potentials'] could be input as the column of x
-         data.
+    Parameters
+    ----------
+    DataFrame_x : pd.DataFrame
+                  should be in the form of a pandas DataFrame column.
+                  For example, df['potentials'] could be input as the
+                  column of x data.
 
-        DataFrame_y : should be in the form of a pandas DataFrame column.
-          For example, df['currents'] could be input as the column of y
-          data.
+    DataFrame_y :  pd.DataFrame
+                  should be in the form of a pandas DataFrame column.
+                  For example, df['currents'] could be input as the
+                  column of y data.
 
-        Returns
-        -------
-        Results: height of maximum peak, height of minimum peak
-          in that order in the form of a list."""
-    current_max = peak_values(dataframe_x, dataframe_y)[1]
-    current_min = peak_values(dataframe_x, dataframe_y)[3]
-    col_x1, col_x2 = split(dataframe_x)
-    col_y1, col_y2 = split(dataframe_y)
+    Returns
+    -------
+    Results: list
+             Height of maximum peak, height of minimum peak
+             in that order in the form of a list.
+    """
+    current_max = peak_values(dataframe_x, dataframe_y, param)[1]
+    current_min = peak_values(dataframe_x, dataframe_y, param)[3]
+    potential_p, potential_n = split(dataframe_x, param)
+    current_p, current_n = split(dataframe_y, param)
     line_at_min = linear_background(
-        col_x1, col_y1)[peak_detection_fxn(dataframe_y)[1]]
+        np.asarray(potential_p), np.asarray(current_p))[
+            peak_detection(current_p, 'positive')['peak_top']]
     line_at_max = linear_background(
-        col_x2, col_y2)[peak_detection_fxn(dataframe_y)[0]]
+        np.asarray(potential_n), np.asarray(current_n))[
+            peak_detection(current_n, 'negative')['peak_bottom']]
     height_of_max = current_max - line_at_max
     height_of_min = abs(current_min - line_at_min)
     return [height_of_max, height_of_min]
 
 
-def peak_ratio(dataframe_x, dataframe_y):
-    """Outputs the peak ratios from cyclic voltammetry data.
+def peak_ratio(dataframe_x, dataframe_y, param):
+    """
+    Outputs the peak ratios from cyclic voltammetry data.
 
-       Parameters
-       ----------
-       DataFrame_x : should be in the form of a pandas DataFrame column.
-         For example, df['potentials'] could be input as the column of x
-         data.
+    Parameters
+    ----------
+    DataFrame_x : pd.DataFrame
+                  should be in the form of a pandas DataFrame column.
+                  For example, df['potentials'] could be input as the
+                  column of x data.
 
-        DataFrame_y : should be in the form of a pandas DataFrame column.
-          For example, df['currents'] could be input as the column of y
-          data.
+    DataFrame_y :  pd.DataFrame
+                  should be in the form of a pandas DataFrame column.
+                  For example, df['currents'] could be input as the
+                  column of y data.
 
-       Returns
-       -------
-       Result : returns a the peak ratio."""
-    ratio = (peak_heights(dataframe_x, dataframe_y)[0] /
-             peak_heights(dataframe_x, dataframe_y)[1])
+    Returns
+    -------
+    Result : float
+             returns a the peak ratio.
+    """
+    ratio = (peak_heights(dataframe_x, dataframe_y, param)[0] /
+             peak_heights(dataframe_x, dataframe_y, param)[1])
     return ratio
 
 
-def data_analysis(data):
-    """This function returns a dictionary consisting of
+def data_analysis(data, param):
+    """
+    This function returns a dictionary consisting of
     the relevant values. This can be seen in the user
-    interface (Dash) as well."""
+    interface (Dash) as well.
+
+    Parameters
+    ----------
+    data: pd.DataFrame
+          pandas dataframe contianign the potential and current values
+    param: dict
+           A dictionary containing values of the experimental parameters
+
+    Results
+    -------
+    restult_dict: dict
+                  ditionary containign the results of the data analysis
+    """
     results_dict = {}
 
     # df = main.data_frame(dict_1,1)
     x_val = data['Potential']
     y_val = data['Current']
     # Peaks are here [list]
-    peak_index = peak_detection_fxn(y_val)
+    # peak_index = peak_detection(y_val, param)
     # Split x,y to get baselines
-    col_x1, col_x2 = split(x_val)
-    col_y1, col_y2 = split(y_val)
-    y_base1 = linear_background(col_x1, col_y1)
-    y_base2 = linear_background(col_x2, col_y2)
+    potential_p, potential_n = split(x_val, param)
+    current_p, current_n = split(y_val, param)
+    # y_base1 = linear_background(
+    #     np.asarray(potential_p), np.asarray(current_p))
+    # y_base2 = linear_background(
+    #     np.asarray(potential_p), np.asarray(current_p))
     # Calculations based on baseline and peak
-    values = peak_values(x_val, y_val)
+    values = peak_values(x_val, y_val, param)
     esub_t = values[0]
     esub_b = values[2]
-    dof_e = del_potential(x_val, y_val)
-    half_e = min(esub_t, esub_b) + half_wave_potential(x_val, y_val)
-    ipa = peak_heights(x_val, y_val)[0]
-    ipc = peak_heights(x_val, y_val)[1]
-    ratio_i = peak_ratio(x_val, y_val)
+    dof_e = del_potential(x_val, y_val, param)
+    half_e = min(esub_t, esub_b) + half_wave_potential(x_val, y_val, param)
+    ipa = peak_heights(x_val, y_val, param)[0]
+    ipc = peak_heights(x_val, y_val, param)[1]
+    ratio_i = peak_ratio(x_val, y_val, param)
     results_dict['Peak Current Ratio'] = ratio_i
     results_dict['Ipc (A)'] = ipc
     results_dict['Ipa (A)'] = ipa
@@ -590,6 +694,6 @@ def data_analysis(data):
         results_dict['Type'] = 'Catholyte'
     elif 'Yes' in results_dict.values():
         results_dict['Type'] = 'Anolyte'
-    return results_dict, col_x1, col_x2,\
-        col_y1, col_y2, y_base1, y_base2, peak_index
-    # return results_dict
+    # return results_dict, col_x1, col_x2, col_y1, col_y2, \
+    #  y_base1, y_base2, peak_index
+    return results_dict
